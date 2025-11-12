@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Simple Quiz Tester</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            max-width: 800px; 
+            margin: 50px auto; 
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .section { 
+            background: white; 
+            padding: 20px; 
+            margin: 20px 0; 
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        button { 
+            background: #4CAF50; 
+            color: white; 
+            padding: 10px 20px; 
+            border: none; 
+            border-radius: 4px; 
+            cursor: pointer;
+            font-size: 14px;
+            margin: 5px;
+        }
+        button:hover { background: #45a049; }
+        input { 
+            padding: 8px; 
+            margin: 5px; 
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        #log { 
+            background: #1e1e1e; 
+            color: #0f0; 
+            padding: 15px; 
+            max-height: 300px; 
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .success { color: #4CAF50; }
+        .error { color: #f44336; }
+        .info { color: #2196F3; }
+        h1 { color: #333; }
+        h2 { color: #666; font-size: 18px; }
+        .status { 
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #f44336;
+            margin-right: 5px;
+        }
+        .status.connected { background: #4CAF50; }
+    </style>
+</head>
+<body>
+    <h1>🎯 Simple Quiz Tester</h1>
+    <p>Status: <span class="status" id="status"></span><span id="statusText">Disconnected</span></p>
+
+    <!-- Step 1: Create Quiz -->
+    <div class="section">
+        <h2>Step 1: Create Quiz</h2>
+        <button onclick="createQuiz()">Create Quiz</button>
+        <div id="quizIdDisplay"></div>
+    </div>
+
+    <!-- Step 2: Join Quiz -->
+    <div class="section">
+        <h2>Step 2: Join Quiz</h2>
+        <input type="text" id="joinQuizId" placeholder="Quiz ID">
+        <input type="text" id="username" placeholder="Your Name" value="Tester">
+        <button onclick="joinQuiz()">Join Quiz</button>
+    </div>
+
+    <!-- Step 3: Start Quiz -->
+    <div class="section">
+        <h2>Step 3: Start Quiz</h2>
+        <button onclick="startQuiz()" id="startBtn" disabled>Start Quiz</button>
+    </div>
+
+    <!-- Step 4: Answer Question -->
+    <div class="section">
+        <h2>Step 4: Answer Question</h2>
+        <div id="questionDisplay">No question yet</div>
+        <div id="optionsDisplay"></div>
+    </div>
+
+    <!-- Step 5: Next Question -->
+    <div class="section">
+        <h2>Step 5: Next Question</h2>
+        <button onclick="nextQuestion()" id="nextBtn" disabled>Next Question</button>
+    </div>
+
+    <!-- Log -->
+    <div class="section">
+        <h2>Event Log</h2>
+        <div id="log"></div>
+    </div>
+
+    <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
+    <script>
+        let socket;
+        let currentQuizId = null;
+        let currentQuestion = null;
+
+        // Connect to server
+        socket = io('http://localhost:3000');
+
+        socket.on('connect', () => {
+            log('✅ Connected to server', 'success');
+            console.log('Socket connected:', socket.id);
+            document.getElementById('status').classList.add('connected');
+            document.getElementById('statusText').textContent = 'Connected';
+        });
+
+        socket.on('disconnect', () => {
+            log('❌ Disconnected from server', 'error');
+            document.getElementById('status').classList.remove('connected');
+            document.getElementById('statusText').textContent = 'Disconnected';
+        });
+
+        socket.on('error', (data) => {
+            log('❌ Error: ' + data.message, 'error');
+            console.error('Socket error:', data);
+            if (data.error) {
+                log('   Details: ' + data.error, 'error');
+            }
+        });
+
+        socket.on('quiz_created', (data) => {
+            log('✅ Quiz created: ' + JSON.stringify(data), 'success');
+        });
+
+        socket.on('joined_successfully', (data) => {
+            log('✅ Joined quiz successfully!', 'success');
+            console.log('Response data:', data);
+            
+            // Handle different response structures
+            if (data.data && data.data.quiz) {
+                currentQuizId = data.data.quiz.quizId;
+            } else if (data.quiz) {
+                currentQuizId = data.quiz.quizId;
+            } else if (data.quizId) {
+                currentQuizId = data.quizId;
+            } else {
+                log('❌ Error: Could not find quiz ID in response', 'error');
+                console.error('Unexpected response structure:', data);
+                return;
+            }
+            
+            log('Quiz ID: ' + currentQuizId, 'info');
+            document.getElementById('startBtn').disabled = false;
+        });
+
+        socket.on('quiz_started', (data) => {
+            log('✅ Quiz started!', 'success');
+            displayQuestion(data);
+        });
+
+        socket.on('question_next', (data) => {
+            log('📝 Next question', 'info');
+            displayQuestion(data);
+        });
+
+        socket.on('answer_result', (data) => {
+            log(`${data.correct ? '✅' : '❌'} Answer: ${data.correct ? 'Correct' : 'Incorrect'} (+${data.earnedPoints} points)`, data.correct ? 'success' : 'error');
+            document.getElementById('nextBtn').disabled = false;
+        });
+
+        socket.on('quiz_completed', (data) => {
+            log('🎉 Quiz completed!', 'success');
+            document.getElementById('questionDisplay').innerHTML = '<h3>Quiz Completed! 🎉</h3>';
+            document.getElementById('optionsDisplay').innerHTML = '';
+        });
+
+        function createQuiz() {
+            log('📤 Creating quiz...', 'info');
+            socket.emit('create_quiz', { 
+                title: 'Test Quiz', 
+                questionCount: 5 
+            }, (response) => {
+                if (response.event === 'quiz_created') {
+                    const quizId = response.data.quizId;
+                    log('✅ Quiz ID: ' + quizId, 'success');
+                    document.getElementById('quizIdDisplay').innerHTML = 
+                        `<strong>Quiz ID: ${quizId}</strong> (Auto-filled below)`;
+                    document.getElementById('joinQuizId').value = quizId;
+                }
+            });
+        }
+
+        function joinQuiz() {
+            const quizId = document.getElementById('joinQuizId').value;
+            const username = document.getElementById('username').value;
+            
+            if (!quizId || !username) {
+                alert('Please enter Quiz ID and Username');
+                return;
+            }
+
+            log(`📤 Joining quiz ${quizId} as ${username}...`, 'info');
+            currentQuizId = quizId;
+            socket.emit('join_quiz', { quizId, username });
+        }
+
+        function startQuiz() {
+            if (!currentQuizId) {
+                alert('Please join a quiz first');
+                return;
+            }
+            log('📤 Starting quiz...', 'info');
+            socket.emit('start_quiz', { quizId: currentQuizId });
+        }
+
+        function displayQuestion(data) {
+            console.log('=== Display Question Called ===');
+            console.log('Full data:', JSON.stringify(data, null, 2));
+            console.log('data.question:', data.question);
+            
+            if (!data.question) {
+                log('❌ Error: No question in response', 'error');
+                console.error('Unexpected response:', data);
+                return;
+            }
+            
+            currentQuestion = data.question;
+            console.log('Set currentQuestion to:', currentQuestion);
+            console.log('currentQuestion.id:', currentQuestion.id);
+            
+            const questionNum = data.questionNumber || 1;
+            const totalQuestions = data.quiz?.totalQuestions || data.totalQuestions || 10;
+
+            document.getElementById('questionDisplay').innerHTML = `
+                <strong>Question ${questionNum} of ${totalQuestions}</strong><br><br>
+                ${currentQuestion.text}
+            `;
+
+            document.getElementById('optionsDisplay').innerHTML = 
+                currentQuestion.options.map((opt, idx) => 
+                    `<button onclick="submitAnswer('${opt.replace(/'/g, "\\'")}')">${opt}</button>`
+                ).join('<br>');
+
+            document.getElementById('nextBtn').disabled = true;
+        }
+
+        function submitAnswer(answer) {
+            if (!currentQuestion) {
+                alert('No active question');
+                return;
+            }
+
+            console.log('Current question object:', currentQuestion);
+            console.log('Question ID:', currentQuestion.id);
+            console.log('Submitting answer payload:', {
+                quizId: currentQuizId,
+                questionId: currentQuestion.id,
+                answer: answer,
+                timeTaken: 5
+            });
+
+            log(`📤 Submitting answer: ${answer}`, 'info');
+            log(`   Question ID: ${currentQuestion.id}`, 'info');
+            
+            socket.emit('submit_answer', {
+                quizId: currentQuizId,
+                questionId: currentQuestion.id,
+                answer: answer,
+                timeTaken: 5
+            });
+        }
+
+        function nextQuestion() {
+            log('📤 Getting next question...', 'info');
+            socket.emit('next_question', { quizId: currentQuizId });
+        }
+
+        function log(message, type = 'info') {
+            const logDiv = document.getElementById('log');
+            const time = new Date().toLocaleTimeString();
+            logDiv.innerHTML += `<div class="${type}">[${time}] ${message}</div>`;
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+    </script>
+</body>
+</html>
+

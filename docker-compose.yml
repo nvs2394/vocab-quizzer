@@ -1,0 +1,44 @@
+version: '3.8'
+
+services:
+  # Redis for session and leaderboard storage
+  redis:
+    image: redis:7-alpine
+    container_name: quiz-redis
+    ports:
+      - '6379:6379'
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # NestJS Application (optional - for containerized deployment)
+  # app:
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile
+  #   container_name: quiz-app
+  #   ports:
+  #     - '3000:3000'
+  #   environment:
+  #     - NODE_ENV=production
+  #     - PORT=3000
+  #     - REDIS_HOST=redis
+  #     - REDIS_PORT=6379
+  #     - QUIZ_SESSION_TTL=3600
+  #     - MAX_PARTICIPANTS_PER_QUIZ=100
+  #   depends_on:
+  #     redis:
+  #       condition: service_healthy
+  #   volumes:
+  #     - ./logs:/app/logs
+  #   restart: unless-stopped
+
+volumes:
+  redis-data:
+    driver: local
+
