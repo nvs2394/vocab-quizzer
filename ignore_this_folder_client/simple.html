@@ -238,15 +238,31 @@
 
             document.getElementById('questionDisplay').innerHTML = `
                 <strong>Question ${questionNum} of ${totalQuestions}</strong><br><br>
-                ${currentQuestion.text}
+                ${escapeHtml(currentQuestion.text)}
             `;
 
-            document.getElementById('optionsDisplay').innerHTML = 
-                currentQuestion.options.map((opt, idx) => 
-                    `<button onclick="submitAnswer('${opt.replace(/'/g, "\\'")}')">${opt}</button>`
-                ).join('<br>');
+            // Clear previous options
+            const optionsDiv = document.getElementById('optionsDisplay');
+            optionsDiv.innerHTML = '';
+            
+            // Create buttons with proper event listeners (safer than onclick)
+            currentQuestion.options.forEach((opt, idx) => {
+                const btn = document.createElement('button');
+                btn.textContent = opt;
+                btn.addEventListener('click', () => submitAnswer(opt));
+                optionsDiv.appendChild(btn);
+                if (idx < currentQuestion.options.length - 1) {
+                    optionsDiv.appendChild(document.createElement('br'));
+                }
+            });
 
             document.getElementById('nextBtn').disabled = true;
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
         }
 
         function submitAnswer(answer) {
