@@ -1,18 +1,52 @@
+# Dependencies
 node_modules
 npm-debug.log
+# package-lock.json  # ← KEEP THIS! Needed for npm ci
+
+# Build outputs
 dist
+build
+coverage
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Git
 .git
 .gitignore
+.github
+
+# Documentation
+*.md
+docs
 README.md
+
+# Test files
+test
+*.spec.ts
+*.test.ts
+
+# Client test files
+client
+
+# Environment
 .env
 .env.local
 .env.*.local
-coverage
-.nyc_output
-.vscode
-.idea
-*.log
-temp
-tmp
-.DS_Store
 
+# Logs
+logs
+*.log
+
+# Misc
+.prettierrc
+.eslintrc.js
+tsconfig.build.tsbak
