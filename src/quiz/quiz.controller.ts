@@ -8,8 +8,8 @@
  * - Standard CRUD patterns for quiz management
  */
 
-import { Controller, Get, Post, Body, Param, Query, Logger } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiQuery, ApiBody } from '@nestjs/swagger';
+import { Controller, Get, Post, Body, Param, Logger } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiBody } from '@nestjs/swagger';
 import { QuizService } from './services/quiz.service';
 import { QuestionService } from './services/question.service';
 import { CreateQuizDto } from './dto/create-quiz.dto';
