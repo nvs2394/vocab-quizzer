@@ -158,6 +158,46 @@ bash fix-tests.sh  # or manually remove @jest/test-sequencer from package.json
 
 See **[TEST_SUMMARY.md](./TEST_SUMMARY.md)** and **[docs/TESTING.md](./docs/TESTING.md)** for details.
 
+## 🔄 CI/CD Pipeline
+
+The project includes a GitHub Actions workflow for automated testing and quality checks.
+
+**Workflow:** `.github/workflows/ci.yml`
+
+### What Gets Checked
+
+Every push and pull request triggers:
+
+- ✅ **Linting** - ESLint code quality checks
+- ✅ **Formatting** - Prettier code style checks
+- ✅ **Unit Tests** - All 110+ tests (using mocked Redis)
+- ✅ **Test Coverage** - Coverage report generation
+- ✅ **Build** - Application build verification
+- ✅ **Security** - npm audit for vulnerabilities
+
+### Pipeline Stages
+
+```
+Checkout → Install → Lint → Test → Coverage → Build
+                           ↓
+                    Security Scan
+```
+
+### Run Locally
+
+Run the same checks that CI runs:
+
+```bash
+npm ci              # Clean install
+npm run lint        # Linting
+npm run format      # Formatting
+npm test            # Tests
+npm run test:cov    # Coverage
+npm run build       # Build
+```
+
+**See:** [.github/workflows/README.md](./.github/workflows/README.md) and [CI/CD Diagram](./docs/diagrams/08-cicd-pipeline.md)
+
 ## Project Structure
 
 ```
